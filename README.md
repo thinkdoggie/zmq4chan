@@ -1,4 +1,4 @@
-# zmq4chan - Channel-based interface for ZeroMQ sockets
+# zmq4chan - Go-native Channel interface for ZeroMQ sockets
 
 A Go package that provides a channel-based adapter for [ZeroMQ](https://zeromq.org/) sockets, bridging ZMQ's message-passing model with Go's channel-based concurrency model.
 
