@@ -4,8 +4,10 @@ run:
 
 linters-settings:
   govet:
-    check-shadowing: true
     enable-all: true
+    settings:
+      shadow:
+        strict: true
   gocyclo:
     min-complexity: 15
   dupl:
@@ -39,7 +41,6 @@ linters:
     - bodyclose
     - dupl
     - errcheck
-    - exportloopref
     - funlen
     - gochecknoinits
     - goconst
@@ -48,8 +49,6 @@ linters:
     - gofmt
     - gofumpt
     - goimports
-    - golint
-    - gomnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -59,6 +58,7 @@ linters:
     - misspell
     - nakedret
     - nolintlint
+    - revive
     - rowserrcheck
     - staticcheck
     - stylecheck
@@ -78,11 +78,9 @@ issues:
         - dupl
         - gosec
         - funlen
-        - gomnd
     # Exclude known linters from partially hard-to-fix issues
     - linters:
         - lll
-        - gomnd
       source: "^//go:generate "
   # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
   max-issues-per-linter: 0

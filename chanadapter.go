@@ -156,7 +156,8 @@ func (t *ChanAdapter) runRouterLoop(_ context.Context) {
 	poller.Add(pair, zmq.POLLIN)
 
 	for {
-		events, err := poller.PollAll(-1)
+		var events []zmq.Polled
+		events, err = poller.PollAll(-1)
 		if err != nil {
 			log.Println(err)
 			return
