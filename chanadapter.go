@@ -168,45 +168,59 @@ func (t *ChanAdapter) runRouterLoop(_ context.Context) {
 		}
 
 		for _, item := range events {
+			if item.Events&zmq.POLLIN == 0 {
+				continue
+			}
+
 			switch s := item.Socket; s {
 			case pair:
-				if item.Events&zmq.POLLIN != 0 {
-					opCode, err := pair.RecvBytes(0)
-					if err != nil {
-						log.Println(err)
-						continue
-					}
-
-					if bytes.Equal(opCode, chanAdapterOpClose) {
-						return
-					} else if bytes.Equal(opCode, chanAdapterOpSend) {
-						msg, ok := <-t.sendBufferChan
-						if !ok {
-							log.Println("E: sendBufferChan is closed")
-							return
-						}
-						// send the message payload to the ZMQ socket
-						_, err = t.socket.SendMessage(msg)
-						if err != nil {
-							log.Println("E: failed to send message to socket. ", err)
-							continue
-						}
-					}
+				if t.handlePairEvent(pair) {
+					return
 				}
+				continue
 			case t.socket:
-				if item.Events&zmq.POLLIN != 0 {
-					// process incoming messages
-					msg, err := t.socket.RecvMessageBytes(0)
-					if err != nil {
-						log.Println(err)
-						continue
-					}
-					// forward the message to rxChan
-					t.rxChan <- msg
-				}
+				t.handleSocketEvent(t.socket)
+				continue
 			}
 		}
 	}
+}
+
+func (t *ChanAdapter) handlePairEvent(pair *zmq.Socket) (shouldExit bool) {
+	opCode, err := pair.RecvBytes(0)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	if bytes.Equal(opCode, chanAdapterOpClose) {
+		return true
+	} else if bytes.Equal(opCode, chanAdapterOpSend) {
+		msg, ok := <-t.sendBufferChan
+		if !ok {
+			log.Println("E: sendBufferChan is closed")
+			return true
+		}
+		// send the message payload to the ZMQ socket
+		_, err = t.socket.SendMessage(msg)
+		if err != nil {
+			log.Println("E: failed to send message to socket. ", err)
+			return false
+		}
+	}
+
+	return false
+}
+
+func (t *ChanAdapter) handleSocketEvent(soc *zmq.Socket) {
+	// process incoming messages
+	msg, err := soc.RecvMessageBytes(0)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	// forward the message to rxChan
+	t.rxChan <- msg
 }
 
 // runSenderLoop handles outgoing messages from the transmit channel.

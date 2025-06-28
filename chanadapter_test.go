@@ -12,18 +12,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type ChanAdapterTestFixture struct {
-	// Begin of test case parameters
-	socketAddr string
-	rxChanSize int
-	txChanSize int
-	identity   []byte
-	// End of test case parameters
+type ChanAdapterTestFixture struct { //nolint:govet // no need to optimize test fixture
+	identity       []byte
+	socketAddr     string
 	bindSocket     *zmq.Socket
 	bindAdapter    *ChanAdapter
 	cancel         func()
 	connectSocket  *zmq.Socket
 	connectAdapter *ChanAdapter
+	rxChanSize     int
+	txChanSize     int
 }
 
 func (tf *ChanAdapterTestFixture) setUp(t *testing.T, connectType, bindType zmq.Type) {
@@ -40,7 +38,7 @@ func (tf *ChanAdapterTestFixture) setUp(t *testing.T, connectType, bindType zmq.
 	require.NoError(t, err)
 
 	if tf.identity != nil {
-		err = tf.connectSocket.SetIdentity(string(tf.identity[:]))
+		err = tf.connectSocket.SetIdentity(string(tf.identity[:])) //nolint:gocritic
 		require.NoError(t, err)
 	}
 
@@ -113,8 +111,8 @@ func TestChanAdapterReq2Router(t *testing.T) {
 	routeHeader := [][]byte{tf.identity, emptyDelimiter}
 	replyMsg := [][]byte{[]byte("Reply")}
 	requestMsg := [][]byte{[]byte("Request"), []byte("Hello, world!")}
-	recvRequestMsg := append(routeHeader, requestMsg...)
-	sendReplyMsg := append(routeHeader, replyMsg...)
+	recvRequestMsg := append(routeHeader, requestMsg...) //nolint:gocritic
+	sendReplyMsg := append(routeHeader, replyMsg...)     //nolint:gocritic
 
 	tf.connectAdapter.TxChan() <- requestMsg
 	gotBindMsg, ok := <-tf.bindAdapter.RxChan()
@@ -142,10 +140,10 @@ func TestChanAdapterDealer2Router(t *testing.T) {
 	dealerHeader := [][]byte{emptyDelimiter}
 	replyMsg := [][]byte{[]byte("Reqly")}
 	requestMsg := [][]byte{[]byte("Request"), []byte("Hello, world!")}
-	sendRequestMsg := append(dealerHeader, requestMsg...)
-	recvRequestMsg := append(routeHeader, requestMsg...)
-	sendReplyMsg := append(routeHeader, replyMsg...)
-	recvReplyMsg := append(dealerHeader, replyMsg...)
+	sendRequestMsg := append(dealerHeader, requestMsg...) //nolint:gocritic
+	recvRequestMsg := append(routeHeader, requestMsg...)  //nolint:gocritic
+	sendReplyMsg := append(routeHeader, replyMsg...)      //nolint:gocritic
+	recvReplyMsg := append(dealerHeader, replyMsg...)     //nolint:gocritic
 
 	tf.connectAdapter.TxChan() <- sendRequestMsg
 	gotBindMsg, ok := <-tf.bindAdapter.RxChan()
@@ -173,11 +171,11 @@ func TestChanAdapterReconnectDealer2Router(t *testing.T) {
 	dealerHeader := [][]byte{emptyDelimiter}
 	replyMsg := [][]byte{[]byte("Reqly")}
 	requestMsg := [][]byte{[]byte("Request"), []byte("Hello, world!")}
-	sendDropMsg := append(dealerHeader, replyMsg...)
-	sendRequestMsg := append(dealerHeader, requestMsg...)
-	recvRequestMsg := append(routeHeader, requestMsg...)
-	sendReplyMsg := append(routeHeader, replyMsg...)
-	recvReplyMsg := append(dealerHeader, replyMsg...)
+	sendDropMsg := append(dealerHeader, replyMsg...)      //nolint:gocritic
+	sendRequestMsg := append(dealerHeader, requestMsg...) //nolint:gocritic
+	recvRequestMsg := append(routeHeader, requestMsg...)  //nolint:gocritic
+	sendReplyMsg := append(routeHeader, replyMsg...)      //nolint:gocritic
+	recvReplyMsg := append(dealerHeader, replyMsg...)     //nolint:gocritic
 
 	tf.connectAdapter.TxChan() <- sendDropMsg
 	tf.connectAdapter.Close()
@@ -294,8 +292,7 @@ func TestChanAdapterEmptyMessage(t *testing.T) {
 	tf.setUp(t, zmq.PUSH, zmq.PULL)
 
 	// Test sending an empty message
-	emptyMsg := [][]byte{[]byte{}}
-
+	emptyMsg := [][]byte{{}}
 	tf.connectAdapter.TxChan() <- emptyMsg
 	gotBindMsg, ok := <-tf.bindAdapter.RxChan()
 	require.True(t, ok, "bindAdapter.RxChan() should return a message")
@@ -408,7 +405,7 @@ func TestChanAdapterConcurrentAccess(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < messagesPerGoroutine; j++ {
-				msg := [][]byte{[]byte{}, []byte(fmt.Sprintf("msg-%d-%d", id, j))}
+				msg := [][]byte{{}, []byte(fmt.Sprintf("msg-%d-%d", id, j))}
 				tf.connectAdapter.TxChan() <- msg
 			}
 		}(i)
