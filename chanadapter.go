@@ -21,13 +21,13 @@ import (
 // from the Tx channel to the ZMQ socket.
 type ChanAdapter struct {
 	socket         *zmq.Socket
-	pairAddr       string
 	rxChan         chan [][]byte
 	txChan         chan [][]byte
 	sendBufferChan chan [][]byte
-	closeOnce      sync.Once
 	closeChan      func()
 	ctxCancel      func()
+	pairAddr       string
+	closeOnce      sync.Once
 	wg             sync.WaitGroup
 }
 
@@ -71,7 +71,7 @@ var (
 //	case <-time.After(time.Second):
 //		// Handle timeout
 //	}
-func NewChanAdapter(socket *zmq.Socket, rxChanSize int, txChanSize int) *ChanAdapter {
+func NewChanAdapter(socket *zmq.Socket, rxChanSize, txChanSize int) *ChanAdapter {
 	pairAddr := fmt.Sprintf("inproc://zmq-chan-transceiver-%d", chanAdapterUniqueID.Add(1))
 	rxChan := make(chan [][]byte, rxChanSize)
 	txChan := make(chan [][]byte, txChanSize)
@@ -117,7 +117,7 @@ func (t *ChanAdapter) TxChan() chan<- [][]byte {
 // another for routing messages from the transmit channel to the ZMQ socket.
 //
 // The provided context can be used to cancel the adapter's operation.
-// When the context is cancelled or Close() is called, both goroutines will
+// When the context is canceled or Close() is called, both goroutines will
 // be shut down gracefully.
 //
 // Start should only be called once per adapter instance.
@@ -205,10 +205,8 @@ func (t *ChanAdapter) runRouterLoop(_ context.Context) {
 					t.rxChan <- msg
 				}
 			}
-
 		}
 	}
-
 }
 
 // runSenderLoop handles outgoing messages from the transmit channel.
@@ -251,13 +249,13 @@ func (t *ChanAdapter) runSenderLoop(ctx context.Context) {
 				log.Println(err)
 				continue
 			}
-			// block until the message payload is recieved by Router loop
+			// block until the message payload is received by Router loop
 			t.sendBufferChan <- msg
 		}
 	}
 }
 
-// Close gracefully shuts down the adapter by cancelling the context,
+// Close gracefully shuts down the adapter by canceling the context,
 // waiting for all goroutines to complete, and closing all channels.
 // It's safe to call Close multiple times.
 //
