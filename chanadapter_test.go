@@ -1,4 +1,4 @@
-package zmq4chan
+package zmq4chan_test
 
 import (
 	"context"
@@ -10,16 +10,18 @@ import (
 	zmq "github.com/pebbe/zmq4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/thinkdoggie/zmq4chan"
 )
 
 type ChanAdapterTestFixture struct { //nolint:govet // no need to optimize test fixture
 	identity       []byte
 	socketAddr     string
 	bindSocket     *zmq.Socket
-	bindAdapter    *ChanAdapter
+	bindAdapter    *zmq4chan.ChanAdapter
 	cancel         func()
 	connectSocket  *zmq.Socket
-	connectAdapter *ChanAdapter
+	connectAdapter *zmq4chan.ChanAdapter
 	rxChanSize     int
 	txChanSize     int
 }
@@ -32,7 +34,7 @@ func (tf *ChanAdapterTestFixture) setUp(t *testing.T, connectType, bindType zmq.
 	err = tf.bindSocket.Bind(tf.socketAddr)
 	require.NoError(t, err)
 
-	tf.bindAdapter = NewChanAdapter(tf.bindSocket, tf.rxChanSize, tf.txChanSize)
+	tf.bindAdapter = zmq4chan.NewChanAdapter(tf.bindSocket, tf.rxChanSize, tf.txChanSize)
 
 	tf.connectSocket, err = zmq.NewSocket(connectType)
 	require.NoError(t, err)
@@ -45,7 +47,7 @@ func (tf *ChanAdapterTestFixture) setUp(t *testing.T, connectType, bindType zmq.
 	err = tf.connectSocket.Connect(tf.socketAddr)
 	require.NoError(t, err)
 
-	tf.connectAdapter = NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
+	tf.connectAdapter = zmq4chan.NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	tf.cancel = cancel
@@ -204,7 +206,7 @@ drainLoop:
 	require.NoError(t, err)
 	err = tf.connectSocket.Connect(tf.socketAddr)
 	require.NoError(t, err)
-	tf.connectAdapter = NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
+	tf.connectAdapter = zmq4chan.NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
 	tf.connectAdapter.Start(context.Background())
 	defer tf.connectAdapter.Close()
 
@@ -347,7 +349,7 @@ func TestChanAdapterCloseBeforeStart(t *testing.T) {
 	require.NoError(t, err)
 	defer socket.Close()
 
-	adapter := NewChanAdapter(socket, 10, 10)
+	adapter := zmq4chan.NewChanAdapter(socket, 10, 10)
 
 	// Close before starting - should not panic
 	assert.NotPanics(t, func() {
