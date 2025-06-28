@@ -1,220 +1,151 @@
+version: "2"
 run:
-  # Timeout for analysis, e.g. 30s, 5m.
-  timeout: 5m
-  
-  # The default concurrency value is the number of available CPU.
   concurrency: 4
-  
-  # Include tests files
   tests: true
-  
-  # Skip auto-generated files
-  skip-files:
-    - ".*\\.pb\\.go$"
-    - ".*\\.gen\\.go$"
-
-# Output configuration options
-output:
-  # Colored output
-  color: always
-  
-  # Print lines of code with issue
-  print-issued-lines: true
-  
-  # Print linter name in the end of issue text
-  print-linter-name: true
-  
-  # Make issues output unique by line
-  uniq-by-line: true
-
-# All available settings for specific linters
-linters-settings:
-  errcheck:
-    # Report about not checking of errors in type assertions: `a := b.(MyStruct)`
-    check-type-assertions: true
-    # Report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`
-    check-blank: true
-
-  govet:
-    # Report about shadowed variables
-    check-shadowing: true
-    # Enable all analyzers
-    enable-all: true
-
-  gofmt:
-    # Simplify code: gofmt with `-s` option
-    simplify: true
-
-  goimports:
-    # Put imports beginning with prefix after 3rd-party packages
-    local-prefixes: github.com/thinkdoggie/zmq4chan
-
-  gocyclo:
-    # Minimal code complexity to report
-    min-complexity: 15
-
-  gocognit:
-    # Minimal code cognitive complexity to report
-    min-complexity: 20
-
-  dupl:
-    # Tokens count to trigger issue
-    threshold: 100
-
-  goconst:
-    # Minimal length of string constant
-    min-len: 3
-    # Minimal occurrences count to trigger
-    min-occurrences: 3
-
-  lll:
-    # Max line length, lines longer will be reported
-    line-length: 120
-
-  maligned:
-    # Print struct with more effective memory layout
-    suggest-new: true
-
-  misspell:
-    # Correct spellings using locale preferences for US or UK
-    locale: US
-
-  funlen:
-    # Checks the number of lines in a function
-    lines: 80
-    # Checks the number of statements in a function
-    statements: 50
-
-  nestif:
-    # Minimal complexity of if statements to report
-    min-complexity: 4
-
-  prealloc:
-    # Report preallocation suggestions only on simple loops that have no returns/breaks/continues/gotos in them
-    simple: true
-    range-loops: true
-    for-loops: false
-
-  revive:
-    # Maximum number of open files at the same time
-    max-open-files: 2048
-    # Enable all available rules
-    enable-all-rules: false
-    # Sets the default severity
-    severity: warning
-    rules:
-      # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: exported
-      - name: if-return
-      - name: increment-decrement
-      - name: var-naming
-      - name: var-declaration
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
-      - name: empty-block
-      - name: superfluous-else
-      - name: unused-parameter
-      - name: unreachable-code
-      - name: redefines-builtin-id
-
-  whitespace:
-    multi-if: false
-    multi-func: false
-
 linters:
-  # Disable all linters as it's a preferred practice to enable only specific ones
-  disable-all: true
-  
+  default: none
   enable:
-    # Enabled by default linters:
-    - errcheck    # Checks for unchecked errors
-    - gosimple    # Simplify code
-    - govet       # Reports suspicious constructs
-    - ineffassign # Detects ineffective assignments
-    - staticcheck # Advanced Go linter
-    - typecheck   # Type-checking errors
-    - unused      # Checks for unused constants, variables, functions and types
-    
-    # Additional useful linters for this project:
-    - bodyclose   # Checks whether HTTP response body is closed successfully
-    - contextcheck # Check context.Context usage
-    - dupl        # Tool for code clone detection
-    - goconst     # Finds repeated strings that could be replaced by a constant
-    - gocyclo     # Computes cyclomatic complexities of functions
-    - gofmt       # Checks whether code was gofmt-ed
-    - goimports   # Checks import statements are formatted correctly
-    - goprintffuncname # Checks that printf-like functions are named with `f` at the end
-    - gosec       # Security-focused linter
-    - lll         # Reports lines that are too long
-    - misspell    # Finds commonly misspelled English words
-    - nilerr      # Finds code that returns nil even if it checks that error is not nil
-    - nolintlint  # Reports ill-formed or insufficient nolint directives
-    - prealloc    # Finds slice declarations that could potentially be pre-allocated
-    - revive      # Fast configurable, extensible, flexible, and beautiful linter for Go
-    - rowserrcheck # Checks whether Err of rows is checked successfully
-    - sqlclosecheck # Checks that sql.Rows and sql.Stmt are closed
-    - unconvert   # Removes unnecessary type conversions
-    - unparam     # Reports unused function parameters
-    - wastedassign # Finds wasted assignment statements
-    - whitespace  # Tool for detection of leading and trailing whitespace
-
+    - bodyclose
+    - contextcheck
+    - dupl
+    - errcheck
+    - goconst
+    - gocyclo
+    - goprintffuncname
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nilerr
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - wastedassign
+    - whitespace
+  settings:
+    dupl:
+      threshold: 100
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    funlen:
+      lines: 80
+      statements: 50
+    gocognit:
+      min-complexity: 20
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gocyclo:
+      min-complexity: 15
+    govet:
+      enable-all: true
+    lll:
+      line-length: 120
+    misspell:
+      locale: US
+    nestif:
+      min-complexity: 4
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
+    revive:
+      max-open-files: 2048
+      severity: warning
+      enable-all-rules: false
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+    whitespace:
+      multi-if: false
+      multi-func: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - errcheck
+          - funlen
+          - gocognit
+          - gocyclo
+          - gosec
+          - lll
+          - mnd
+        path: _test\.go
+      - linters:
+          - errcheck
+          - gosec
+          - mnd
+        path: examples/
+      - linters:
+          - mnd
+        text: 'Magic number: (80|443|8080|3000|5000)'
+      - linters:
+          - mnd
+        text: 'Magic number: (1024|2048|4096|8192)'
+      - path: (.+)\.go$
+        text: Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked
+      - path: (.+)\.go$
+        text: exported (type|method|function) (.+) should have comment or be unexported
+      - path: (.+)\.go$
+        text: 'ST1000: at least one file in a package should have a package comment'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  # List of regexps of issue texts to exclude
-  exclude:
-    # Exclude some linters from running on tests files
-    - "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked"
-    - "exported (type|method|function) (.+) should have comment or be unexported"
-    - "ST1000: at least one file in a package should have a package comment"
-  
-  # Excluding configuration per-path, per-linter, per-text and per-source
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - gomnd
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
-        - lll
-        - gocognit
-        - funlen
-    
-    # Exclude some linters from running on examples
-    - path: examples/
-      linters:
-        - errcheck
-        - gosec
-        - gomnd
-    
-    # Exclude magic number warnings for common networking values
-    - text: "Magic number: (80|443|8080|3000|5000)"
-      linters:
-        - gomnd
-    
-    # Exclude magic number warnings for common buffer sizes
-    - text: "Magic number: (1024|2048|4096|8192)"
-      linters:
-        - gomnd
-
-  # Set to 0 to disable limit
   max-issues-per-linter: 0
   max-same-issues: 0
-
-  # Show only new issues
   new: false
-
-  # Fix found issues (if it's supported by the linter)
-  fix: false 
+  fix: false
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/thinkdoggie/zmq4chan
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

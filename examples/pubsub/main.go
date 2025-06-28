@@ -8,6 +8,7 @@ import (
 	"time"
 
 	zmq "github.com/pebbe/zmq4"
+
 	"github.com/thinkdoggie/zmq4chan"
 )
 
@@ -88,7 +89,7 @@ func runPublisher(ctx context.Context) {
 		case pubAdapter.TxChan() <- msg:
 			// Message sent successfully
 		case <-ctx.Done():
-			fmt.Println("Publisher context cancelled")
+			fmt.Println("Publisher context canceled")
 			return
 		}
 
@@ -160,7 +161,7 @@ func runSubscriber(ctx context.Context, id int) {
 			}
 
 		case <-ctx.Done():
-			fmt.Printf("Subscriber %d: Context cancelled\n", id)
+			fmt.Printf("Subscriber %d: Context canceled\n", id)
 			return
 		}
 	}

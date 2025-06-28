@@ -7,6 +7,7 @@ import (
 	"time"
 
 	zmq "github.com/pebbe/zmq4"
+
 	"github.com/thinkdoggie/zmq4chan"
 )
 
@@ -49,7 +50,7 @@ func main() {
 				reply := [][]byte{[]byte("Echo: " + string(msg[0]))}
 				repAdapter.TxChan() <- reply
 			case <-ctx.Done():
-				fmt.Println("Server context cancelled")
+				fmt.Println("Server context canceled")
 				return
 			}
 		}
@@ -97,7 +98,7 @@ func main() {
 			fmt.Println("Request timeout")
 			return
 		case <-ctx.Done():
-			fmt.Println("Context cancelled")
+			fmt.Println("Context canceled")
 			return
 		}
 
