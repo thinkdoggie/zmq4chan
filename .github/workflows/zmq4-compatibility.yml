@@ -1,0 +1,152 @@
+name: ZMQ4 Compatibility Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run weekly on Sundays at 02:00 UTC
+    - cron: '0 2 * * 0'
+
+jobs:
+  zmq4-compatibility:
+    name: Test ZMQ4 v${{ matrix.zmq4-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        zmq4-version: ['1.2.11', '1.3.1', '1.4.0']
+        go-version: ['1.21']
+        
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Install ZeroMQ
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libzmq3-dev
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-zmq4-${{ matrix.zmq4-version }}-${{ hashFiles('**/go.mod') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.go-version }}-zmq4-${{ matrix.zmq4-version }}-
+
+    - name: Create temporary go.mod with zmq4 v${{ matrix.zmq4-version }}
+      run: |
+        # Backup original go.mod
+        cp go.mod go.mod.backup
+        
+        # Update zmq4 version in go.mod (Linux sed syntax)
+        sed -i "s/github\.com\/pebbe\/zmq4 v[0-9]\+\.[0-9]\+\.[0-9]\+/github.com\/pebbe\/zmq4 v${{ matrix.zmq4-version }}/g" go.mod
+        
+        echo "Updated go.mod content:"
+        cat go.mod
+        
+        # Clean go.sum to avoid checksum conflicts
+        rm -f go.sum
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Tidy dependencies
+      run: go mod tidy
+
+    - name: Verify dependencies
+      run: go mod verify
+
+    - name: Verify zmq4 version
+      run: |
+        echo "Checking if zmq4 version is correctly set to v${{ matrix.zmq4-version }}"
+        go list -m github.com/pebbe/zmq4
+        if ! go list -m github.com/pebbe/zmq4 | grep -q "v${{ matrix.zmq4-version }}"; then
+          echo "ERROR: zmq4 version mismatch!"
+          exit 1
+        fi
+
+    - name: Run unit tests
+      run: |
+        echo "Running unit tests with zmq4 v${{ matrix.zmq4-version }}"
+        go test -v -race ./...
+
+    - name: Build REQ/REP example
+      run: |
+        echo "Building REQ/REP example with zmq4 v${{ matrix.zmq4-version }}"
+        cd examples/reqrep
+        go build -v .
+        echo "REQ/REP example built successfully"
+
+    - name: Build PUB/SUB example
+      run: |
+        echo "Building PUB/SUB example with zmq4 v${{ matrix.zmq4-version }}"
+        cd examples/pubsub
+        go build -v .
+        echo "PUB/SUB example built successfully"
+
+    - name: Test examples compilation
+      run: |
+        echo "Testing that examples can be compiled successfully"
+        
+        # Test REQ/REP example
+        cd examples/reqrep
+        if [ ! -f main ]; then
+          echo "ERROR: REQ/REP example executable not found"
+          exit 1
+        fi
+        echo "REQ/REP example executable found"
+        
+        # Test PUB/SUB example  
+        cd ../pubsub
+        if [ ! -f main ]; then
+          echo "ERROR: PUB/SUB example executable not found"
+          exit 1
+        fi
+        echo "PUB/SUB example executable found"
+
+    - name: Restore original go.mod
+      if: always()
+      run: |
+        if [ -f go.mod.backup ]; then
+          mv go.mod.backup go.mod
+          echo "Original go.mod restored"
+        fi
+
+    - name: Report compatibility status
+      run: |
+        echo "✅ ZMQ4 v${{ matrix.zmq4-version }} compatibility test PASSED"
+        echo "- Unit tests: ✅ PASSED"
+        echo "- REQ/REP example: ✅ BUILT"
+        echo "- PUB/SUB example: ✅ BUILT"
+
+  compatibility-summary:
+    name: Compatibility Summary
+    runs-on: ubuntu-latest
+    needs: zmq4-compatibility
+    if: always()
+    steps:
+    - name: Check compatibility results
+      run: |
+        echo "ZMQ4 Compatibility Test Summary:"
+        echo "================================"
+        
+        if [ "${{ needs.zmq4-compatibility.result }}" == "success" ]; then
+          echo "✅ All ZMQ4 versions are compatible!"
+          echo "   - v1.2.11: ✅ Compatible"
+          echo "   - v1.3.1:  ✅ Compatible" 
+          echo "   - v1.4.0:  ✅ Compatible"
+        else
+          echo "❌ Some ZMQ4 versions have compatibility issues"
+          echo "Please check the individual job results above"
+          exit 1
+        fi 
