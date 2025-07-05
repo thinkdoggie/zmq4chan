@@ -84,14 +84,14 @@ jobs:
       run: |
         echo "Building REQ/REP example with zmq4 v${{ matrix.zmq4-version }}"
         cd examples/reqrep
-        go build -v .
+        go build -v -o reqrep .
         echo "REQ/REP example built successfully"
 
     - name: Build PUB/SUB example
       run: |
         echo "Building PUB/SUB example with zmq4 v${{ matrix.zmq4-version }}"
         cd examples/pubsub
-        go build -v .
+        go build -v -o pubsub .
         echo "PUB/SUB example built successfully"
 
     - name: Test examples compilation
@@ -100,7 +100,7 @@ jobs:
         
         # Test REQ/REP example
         cd examples/reqrep
-        if [ ! -f main ]; then
+        if [ ! -f reqrep ]; then
           echo "ERROR: REQ/REP example executable not found"
           exit 1
         fi
@@ -108,7 +108,7 @@ jobs:
         
         # Test PUB/SUB example  
         cd ../pubsub
-        if [ ! -f main ]; then
+        if [ ! -f pubsub ]; then
           echo "ERROR: PUB/SUB example executable not found"
           exit 1
         fi
