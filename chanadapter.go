@@ -29,12 +29,15 @@ type ChanAdapter struct {
 	pairAddr       string
 	closeOnce      sync.Once
 	wg             sync.WaitGroup
+	hasRx          bool
+	hasTx          bool
 }
 
 var (
 	chanAdapterUniqueID atomic.Uint64
 	chanAdapterOpClose  = []byte{0x0} // the adapter is being closed
 	chanAdapterOpSend   = []byte{0x1} // send a message to the ZMQ socket
+	pairFlagNoSend      = 0x01
 )
 
 // NewChanAdapter creates a new ChanAdapter for the given ZMQ socket.
@@ -71,16 +74,37 @@ var (
 //	case <-time.After(time.Second):
 //		// Handle timeout
 //	}
-func NewChanAdapter(socket *zmq.Socket, rxChanSize, txChanSize int) *ChanAdapter {
+func NewChanAdapter(socket *zmq.Socket, rxChanSize, txChanSize int) (*ChanAdapter, error) {
+	socketType, err := socket.GetType()
+	if err != nil {
+		return nil, err
+	}
+	needRx, needTx := getSocketChannelNeeds(socketType)
+
+	var rxChan, txChan, sendBufferChan chan [][]byte
+
 	pairAddr := fmt.Sprintf("inproc://zmq-chan-transceiver-%d", chanAdapterUniqueID.Add(1))
-	rxChan := make(chan [][]byte, rxChanSize)
-	txChan := make(chan [][]byte, txChanSize)
-	sendBufferChan := make(chan [][]byte) // unbuffered channel
+
+	if needRx {
+		rxChan = make(chan [][]byte, rxChanSize)
+	}
+	if needTx {
+		txChan = make(chan [][]byte, txChanSize)
+	}
+	if needRx && needTx {
+		sendBufferChan = make(chan [][]byte) // unbuffered channel
+	}
 
 	closeChan := func() {
-		close(rxChan)
-		close(txChan)
-		close(sendBufferChan)
+		if rxChan != nil {
+			close(rxChan)
+		}
+		if txChan != nil {
+			close(txChan)
+		}
+		if sendBufferChan != nil {
+			close(sendBufferChan)
+		}
 	}
 
 	return &ChanAdapter{
@@ -90,7 +114,24 @@ func NewChanAdapter(socket *zmq.Socket, rxChanSize, txChanSize int) *ChanAdapter
 		txChan:         txChan,
 		sendBufferChan: sendBufferChan,
 		closeChan:      closeChan,
+		hasRx:          needRx,
+		hasTx:          needTx,
+	}, nil
+}
+
+func getSocketChannelNeeds(socketType zmq.Type) (needRx bool, needTx bool) {
+	switch socketType {
+	case zmq.PUB:
+		return false, true
+	case zmq.SUB:
+		return true, false
+	case zmq.PUSH:
+		return false, true
+	case zmq.PULL:
+		return true, true
 	}
+
+	return true, true
 }
 
 // RxChan returns a receive-only channel for incoming messages from the ZMQ socket.
@@ -125,15 +166,30 @@ func (t *ChanAdapter) Start(ctx context.Context) {
 	childCtx, cancel := context.WithCancel(ctx)
 	t.ctxCancel = cancel
 
-	t.wg.Add(2)
-	go t.runRouterLoop(childCtx)
-	go t.runSenderLoop(childCtx)
+	if t.hasRx {
+		if t.hasTx {
+			t.wg.Add(2)
+			go t.runRouterLoop(childCtx, 0)
+			go t.runSenderLoop(childCtx)
+		} else {
+			t.wg.Add(2)
+			go t.runRouterLoop(childCtx, pairFlagNoSend)
+			go t.runCloseOnlyLoop(childCtx)
+		}
+	} else {
+		if t.hasTx {
+			t.wg.Add(1)
+			go t.runTxOnlyLoop(childCtx)
+		} else {
+			log.Println("E: no channels to run")
+		}
+	}
 }
 
 // runRouterLoop handles incoming messages from the ZMQ socket and internal
 // coordination messages from the sender loop. It forwards socket messages
 // to the receive channel and processes send requests from the sender loop.
-func (t *ChanAdapter) runRouterLoop(_ context.Context) {
+func (t *ChanAdapter) runRouterLoop(_ context.Context, pairFlag int) {
 	var err error
 	defer t.wg.Done()
 	defer t.ctxCancel()
@@ -175,7 +231,7 @@ func (t *ChanAdapter) runRouterLoop(_ context.Context) {
 
 			switch s := item.Socket; s {
 			case pair:
-				if t.handlePairEvent(pair) {
+				if t.handlePairEvent(pair, pairFlag) {
 					return
 				}
 				continue
@@ -187,16 +243,18 @@ func (t *ChanAdapter) runRouterLoop(_ context.Context) {
 	}
 }
 
-func (t *ChanAdapter) handlePairEvent(pair *zmq.Socket) (shouldExit bool) {
+func (t *ChanAdapter) handlePairEvent(pair *zmq.Socket, flag int) (shouldExit bool) {
 	opCode, err := pair.RecvBytes(0)
 	if err != nil {
 		log.Println(err)
 		return false
 	}
 
+	allowSend := flag&pairFlagNoSend == 0
+
 	if bytes.Equal(opCode, chanAdapterOpClose) {
 		return true
-	} else if bytes.Equal(opCode, chanAdapterOpSend) {
+	} else if allowSend && bytes.Equal(opCode, chanAdapterOpSend) {
 		msg, ok := <-t.sendBufferChan
 		if !ok {
 			log.Println("E: sendBufferChan is closed")
@@ -267,6 +325,56 @@ func (t *ChanAdapter) runSenderLoop(ctx context.Context) {
 			// block until the message payload is received by Router loop
 			t.sendBufferChan <- msg
 		}
+	}
+}
+
+func (t *ChanAdapter) runTxOnlyLoop(ctx context.Context) {
+	var err error
+	defer t.wg.Done()
+	defer t.ctxCancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg, ok := <-t.txChan:
+			if !ok {
+				log.Println("E: txChan is closed")
+				return
+			}
+			// send the message payload to the ZMQ socket
+			_, err = t.socket.SendMessage(msg)
+			if err != nil {
+				log.Println("E: failed to send message to socket. ", err)
+				continue
+			}
+		}
+	}
+}
+
+func (t *ChanAdapter) runCloseOnlyLoop(ctx context.Context) {
+	var err error
+	defer t.wg.Done()
+	defer t.ctxCancel()
+
+	pair, err := zmq.NewSocket(zmq.PAIR)
+	if err != nil {
+		log.Println("E: failed to create PAIR socket")
+		return
+	}
+	defer pair.Close()
+
+	err = pair.Connect(t.pairAddr)
+	if err != nil {
+		log.Println("E: failed to connect PAIR socket")
+		return
+	}
+
+	<-ctx.Done()
+	// ensure the router loop is closed gracefully
+	_, err = pair.SendBytes(chanAdapterOpClose, 0)
+	if err != nil {
+		log.Println("E: failed to send close message")
 	}
 }
 

@@ -34,7 +34,8 @@ func (tf *ChanAdapterTestFixture) setUp(t *testing.T, connectType, bindType zmq.
 	err = tf.bindSocket.Bind(tf.socketAddr)
 	require.NoError(t, err)
 
-	tf.bindAdapter = zmq4chan.NewChanAdapter(tf.bindSocket, tf.rxChanSize, tf.txChanSize)
+	tf.bindAdapter, err = zmq4chan.NewChanAdapter(tf.bindSocket, tf.rxChanSize, tf.txChanSize)
+	require.NoError(t, err)
 
 	tf.connectSocket, err = zmq.NewSocket(connectType)
 	require.NoError(t, err)
@@ -47,7 +48,8 @@ func (tf *ChanAdapterTestFixture) setUp(t *testing.T, connectType, bindType zmq.
 	err = tf.connectSocket.Connect(tf.socketAddr)
 	require.NoError(t, err)
 
-	tf.connectAdapter = zmq4chan.NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
+	tf.connectAdapter, err = zmq4chan.NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	tf.cancel = cancel
@@ -206,7 +208,8 @@ drainLoop:
 	require.NoError(t, err)
 	err = tf.connectSocket.Connect(tf.socketAddr)
 	require.NoError(t, err)
-	tf.connectAdapter = zmq4chan.NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
+	tf.connectAdapter, err = zmq4chan.NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
+	require.NoError(t, err)
 	tf.connectAdapter.Start(context.Background())
 	defer tf.connectAdapter.Close()
 
@@ -349,7 +352,8 @@ func TestChanAdapterCloseBeforeStart(t *testing.T) {
 	require.NoError(t, err)
 	defer socket.Close()
 
-	adapter := zmq4chan.NewChanAdapter(socket, 10, 10)
+	adapter, err := zmq4chan.NewChanAdapter(socket, 10, 10)
+	require.NoError(t, err)
 
 	// Close before starting - should not panic
 	assert.NotPanics(t, func() {

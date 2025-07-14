@@ -27,7 +27,10 @@ func main() {
 	}
 
 	// Create channel adapter for REP socket
-	repAdapter := zmq4chan.NewChanAdapter(repSocket, 10, 10)
+	repAdapter, err := zmq4chan.NewChanAdapter(repSocket, 10, 10)
+	if err != nil {
+		log.Fatal("Failed to create REP adapter:", err)
+	}
 	defer repAdapter.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -71,7 +74,10 @@ func main() {
 		log.Fatal("Failed to connect REQ socket:", err)
 	}
 
-	reqAdapter := zmq4chan.NewChanAdapter(reqSocket, 10, 10)
+	reqAdapter, err := zmq4chan.NewChanAdapter(reqSocket, 10, 10)
+	if err != nil {
+		log.Fatal("Failed to create REQ adapter:", err)
+	}
 	defer reqAdapter.Close()
 
 	reqAdapter.Start(ctx)
