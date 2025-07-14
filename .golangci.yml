@@ -111,6 +111,7 @@ linters:
           - errcheck
           - gosec
           - mnd
+          - gocyclo
         path: examples/
       - linters:
           - mnd
