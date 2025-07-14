@@ -27,8 +27,8 @@ type ChanAdapter struct {
 	closeChan      func()
 	ctxCancel      func()
 	pairAddr       string
-	closeOnce      sync.Once
 	wg             sync.WaitGroup
+	closeOnce      sync.Once
 	hasRx          bool
 	hasTx          bool
 }
