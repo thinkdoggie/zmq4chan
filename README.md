@@ -11,6 +11,7 @@ A Go package that provides a channel-based adapter for [ZeroMQ](https://zeromq.o
 
 - **Go Channel Interface**: Provide Go-native channels for ZMQ message sending and receiving
 - **All ZMQ Socket Types**: Supports REQ/REP, DEALER/ROUTER, PUB/SUB, PUSH/PULL, PAIR, and more
+- **Optimized Performance**: Runs minimal goroutines based on socket capabilities, reducing resource usage
 - **Thread-Safe**: Concurrent access to channels is handled safely
 - **Multi-part Messages**: Full support for ZMQ multi-part messages
 - **Context Cancellation**: Graceful shutdown using Go's context pattern

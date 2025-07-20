@@ -142,6 +142,8 @@ func getSocketChannelNeeds(socketType zmq.Type) (needRx bool, needTx bool) {
 // Messages received on the underlying ZMQ socket will be forwarded to this channel
 // as byte slice arrays, where each element represents a message part in multi-part messages.
 //
+// Returns nil for transmit-only socket types (PUB, PUSH) that don't support receiving.
+//
 // The channel will be closed when the adapter is shut down.
 func (t *ChanAdapter) RxChan() <-chan [][]byte {
 	return t.rxChan
@@ -151,6 +153,8 @@ func (t *ChanAdapter) RxChan() <-chan [][]byte {
 // Messages sent to this channel will be forwarded to the underlying ZMQ socket.
 // Each message should be provided as a byte slice array, where each element
 // represents a message part for multi-part messages.
+//
+// Returns nil for receive-only socket types (SUB, PULL) that don't support sending.
 //
 // The channel will be closed when the adapter is shut down.
 func (t *ChanAdapter) TxChan() chan<- [][]byte {
