@@ -11,13 +11,14 @@ on:
 
 jobs:
   zmq4-compatibility:
-    name: Test ZMQ4 v${{ matrix.zmq4-version }}
+    name: Test ZMQ4 v${{ matrix.zmq4-version }} (${{ matrix.version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         zmq4-version: ['1.2.11', '1.3.1', '1.4.0']
         go-version: ['1.21']
+        version: ['v1', 'v2']
         
     steps:
     - name: Check out code
@@ -33,18 +34,28 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libzmq3-dev
 
+    - name: Set working directory
+      run: |
+        if [ "${{ matrix.version }}" = "v1" ]; then
+          echo "WORK_DIR=." >> $GITHUB_ENV
+        else
+          echo "WORK_DIR=v2" >> $GITHUB_ENV
+        fi
+
     - name: Cache Go modules
       uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ matrix.go-version }}-zmq4-${{ matrix.zmq4-version }}-${{ hashFiles('**/go.mod') }}
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ matrix.version }}-zmq4-${{ matrix.zmq4-version }}-${{ hashFiles(format('{0}/**/go.mod', env.WORK_DIR)) }}
         restore-keys: |
-          ${{ runner.os }}-go-${{ matrix.go-version }}-zmq4-${{ matrix.zmq4-version }}-
+          ${{ runner.os }}-go-${{ matrix.go-version }}-${{ matrix.version }}-zmq4-${{ matrix.zmq4-version }}-
 
     - name: Create temporary go.mod with zmq4 v${{ matrix.zmq4-version }}
       run: |
+        cd ${{ env.WORK_DIR }}
+        
         # Backup original go.mod
         cp go.mod go.mod.backup
         
@@ -58,16 +69,23 @@ jobs:
         rm -f go.sum
 
     - name: Download dependencies
-      run: go mod download
+      run: |
+        cd ${{ env.WORK_DIR }}
+        go mod download
 
     - name: Tidy dependencies
-      run: go mod tidy
+      run: |
+        cd ${{ env.WORK_DIR }}
+        go mod tidy
 
     - name: Verify dependencies
-      run: go mod verify
+      run: |
+        cd ${{ env.WORK_DIR }}
+        go mod verify
 
     - name: Verify zmq4 version
       run: |
+        cd ${{ env.WORK_DIR }}
         echo "Checking if zmq4 version is correctly set to v${{ matrix.zmq4-version }}"
         go list -m github.com/pebbe/zmq4
         if ! go list -m github.com/pebbe/zmq4 | grep -q "v${{ matrix.zmq4-version }}"; then
@@ -77,20 +95,21 @@ jobs:
 
     - name: Run unit tests
       run: |
+        cd ${{ env.WORK_DIR }}
         echo "Running unit tests with zmq4 v${{ matrix.zmq4-version }}"
         go test -v -race ./...
 
     - name: Build REQ/REP example
       run: |
+        cd ${{ env.WORK_DIR }}/examples/reqrep
         echo "Building REQ/REP example with zmq4 v${{ matrix.zmq4-version }}"
-        cd examples/reqrep
         go build -v -o reqrep .
         echo "REQ/REP example built successfully"
 
     - name: Build PUB/SUB example
       run: |
+        cd ${{ env.WORK_DIR }}/examples/pubsub
         echo "Building PUB/SUB example with zmq4 v${{ matrix.zmq4-version }}"
-        cd examples/pubsub
         go build -v -o pubsub .
         echo "PUB/SUB example built successfully"
 
@@ -99,7 +118,7 @@ jobs:
         echo "Testing that examples can be compiled successfully"
         
         # Test REQ/REP example
-        cd examples/reqrep
+        cd ${{ env.WORK_DIR }}/examples/reqrep
         if [ ! -f reqrep ]; then
           echo "ERROR: REQ/REP example executable not found"
           exit 1
@@ -117,6 +136,7 @@ jobs:
     - name: Restore original go.mod
       if: always()
       run: |
+        cd ${{ env.WORK_DIR }}
         if [ -f go.mod.backup ]; then
           mv go.mod.backup go.mod
           echo "Original go.mod restored"
@@ -124,7 +144,7 @@ jobs:
 
     - name: Report compatibility status
       run: |
-        echo "✅ ZMQ4 v${{ matrix.zmq4-version }} compatibility test PASSED"
+        echo "✅ ZMQ4 v${{ matrix.zmq4-version }} compatibility test PASSED for ${{ matrix.version }}"
         echo "- Unit tests: ✅ PASSED"
         echo "- REQ/REP example: ✅ BUILT"
         echo "- PUB/SUB example: ✅ BUILT"
@@ -141,10 +161,10 @@ jobs:
         echo "================================"
         
         if [ "${{ needs.zmq4-compatibility.result }}" == "success" ]; then
-          echo "✅ All ZMQ4 versions are compatible!"
-          echo "   - v1.2.11: ✅ Compatible"
-          echo "   - v1.3.1:  ✅ Compatible" 
-          echo "   - v1.4.0:  ✅ Compatible"
+          echo "✅ All ZMQ4 versions are compatible with both v1 and v2!"
+          echo "   - v1.2.11: ✅ Compatible (v1 & v2)"
+          echo "   - v1.3.1:  ✅ Compatible (v1 & v2)" 
+          echo "   - v1.4.0:  ✅ Compatible (v1 & v2)"
         else
           echo "❌ Some ZMQ4 versions have compatibility issues"
           echo "Please check the individual job results above"
