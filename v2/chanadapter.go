@@ -47,6 +47,9 @@ var (
 // The adapter must be started with Start() and should be closed with Close()
 // when no longer needed to ensure proper cleanup of resources.
 //
+// Returns an error if the socket type cannot be determined or other initialization
+// issues occur.
+//
 // Example:
 //
 //	socket, err := zmq4.NewSocket(zmq4.REQ)
@@ -55,7 +58,10 @@ var (
 //	}
 //	socket.Connect("<socket-address>")
 //
-//	adapter := zmq4.NewChanAdapter(socket, 100, 100)
+//	adapter, err := zmq4.NewChanAdapter(socket, 100, 100)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
 //	defer adapter.Close()
 //
 //	// Start the adapter with a context for cancellation
@@ -74,12 +80,14 @@ var (
 //	case <-time.After(time.Second):
 //		// Handle timeout
 //	}
-func NewChanAdapter(socket *zmq.Socket, rxChanSize, txChanSize int) *ChanAdapter {
+func NewChanAdapter(socket *zmq.Socket, rxChanSize, txChanSize int) (*ChanAdapter, error) {
 	var socketType zmq.Type
 	var err error
+
 	socketType, err = socket.GetType()
 	if err != nil {
 		log.Printf("E: failed to get socket type: %v", err)
+		return nil, err
 	}
 	needRx, needTx := getSocketChannelNeeds(socketType)
 
@@ -118,7 +126,7 @@ func NewChanAdapter(socket *zmq.Socket, rxChanSize, txChanSize int) *ChanAdapter
 		closeChan:      closeChan,
 		hasRx:          needRx,
 		hasTx:          needTx,
-	}
+	}, nil
 }
 
 // getSocketChannelNeeds determines which channels (Rx, Tx, or both) are needed

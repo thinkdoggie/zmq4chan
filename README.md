@@ -75,7 +75,10 @@ func main() {
     }
 
     // Create channel adapter for REP socket
-    repAdapter := zmq4chan.NewChanAdapter(repSocket, 10, 10)
+    repAdapter, err := zmq4chan.NewChanAdapter(repSocket, 10, 10)
+    if err != nil {
+        log.Fatal(err)
+    }
     defer repAdapter.Close()
 
     ctx, cancel := context.WithCancel(context.Background())
@@ -110,7 +113,10 @@ func main() {
         log.Fatal(err)
     }
 
-    reqAdapter := zmq4chan.NewChanAdapter(reqSocket, 10, 10)
+    reqAdapter, err := zmq4chan.NewChanAdapter(reqSocket, 10, 10)
+    if err != nil {
+        log.Fatal(err)
+    }
     defer reqAdapter.Close()
     
     reqAdapter.Start(ctx)
@@ -148,7 +154,7 @@ type ChanAdapter struct {
 
 | Function | Description |
 |----------|-------------|
-| `NewChanAdapter(socket, rxSize, txSize)` | Creates a new adapter for a ZMQ socket |
+| `NewChanAdapter(socket, rxSize, txSize) (*ChanAdapter, error)` | Creates a new adapter for a ZMQ socket |
 | `Start(ctx)` | Starts the adapter with context for cancellation |
 | `RxChan()` | Returns receive-only channel for incoming messages |
 | `TxChan()` | Returns send-only channel for outgoing messages |
