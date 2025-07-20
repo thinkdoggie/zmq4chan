@@ -56,10 +56,7 @@ func runPublisher(ctx context.Context) {
 	}
 
 	// Create channel adapter
-	pubAdapter, err := zmq4chan.NewChanAdapter(pubSocket, 0, 100)
-	if err != nil {
-		log.Fatal("Failed to create PUB adapter:", err)
-	}
+	pubAdapter := zmq4chan.NewChanAdapter(pubSocket, 0, 100)
 	defer pubAdapter.Close()
 
 	pubAdapter.Start(ctx)
@@ -135,11 +132,7 @@ func runSubscriber(ctx context.Context, id int) {
 	}
 
 	// Create channel adapter
-	subAdapter, err := zmq4chan.NewChanAdapter(subSocket, 100, 0)
-	if err != nil {
-		log.Printf("Subscriber %d: Failed to create SUB adapter: %v", id, err)
-		return
-	}
+	subAdapter := zmq4chan.NewChanAdapter(subSocket, 100, 0)
 	defer subAdapter.Close()
 
 	subAdapter.Start(ctx)

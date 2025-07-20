@@ -34,8 +34,7 @@ func (tf *ChanAdapterTestFixture) setUp(t *testing.T, connectType, bindType zmq.
 	err = tf.bindSocket.Bind(tf.socketAddr)
 	require.NoError(t, err)
 
-	tf.bindAdapter, err = zmq4chan.NewChanAdapter(tf.bindSocket, tf.rxChanSize, tf.txChanSize)
-	require.NoError(t, err)
+	tf.bindAdapter = zmq4chan.NewChanAdapter(tf.bindSocket, tf.rxChanSize, tf.txChanSize)
 
 	tf.connectSocket, err = zmq.NewSocket(connectType)
 	require.NoError(t, err)
@@ -48,8 +47,7 @@ func (tf *ChanAdapterTestFixture) setUp(t *testing.T, connectType, bindType zmq.
 	err = tf.connectSocket.Connect(tf.socketAddr)
 	require.NoError(t, err)
 
-	tf.connectAdapter, err = zmq4chan.NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
-	require.NoError(t, err)
+	tf.connectAdapter = zmq4chan.NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	tf.cancel = cancel
@@ -86,6 +84,12 @@ func TestChanAdapterReq2Rep(t *testing.T) {
 	}
 	tf.setUp(t, zmq.REQ, zmq.REP)
 
+	// Check that channels are not nil
+	assert.NotNil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should not be nil")
+
 	// Test
 	requestMsg := [][]byte{[]byte("Hello, world!")}
 	replyMsg := [][]byte{[]byte("Ack")}
@@ -109,6 +113,12 @@ func TestChanAdapterReq2Router(t *testing.T) {
 		identity:   []byte("client-12345"),
 	}
 	tf.setUp(t, zmq.REQ, zmq.ROUTER)
+
+	// Check that channels are not nil
+	assert.NotNil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should not be nil")
 
 	// Test
 	emptyDelimiter := []byte{}
@@ -137,6 +147,12 @@ func TestChanAdapterDealer2Router(t *testing.T) {
 		identity:   []byte("client-12345"),
 	}
 	tf.setUp(t, zmq.DEALER, zmq.ROUTER)
+
+	// Check that channels are not nil
+	assert.NotNil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should not be nil")
 
 	// Test
 	emptyDelimiter := []byte{}
@@ -168,6 +184,12 @@ func TestChanAdapterReconnectDealer2Router(t *testing.T) {
 		identity:   []byte("client-12345"),
 	}
 	tf.setUp(t, zmq.DEALER, zmq.ROUTER)
+
+	// Check that channels are not nil
+	assert.NotNil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should not be nil")
 
 	// Test
 	emptyDelimiter := []byte{}
@@ -208,10 +230,13 @@ drainLoop:
 	require.NoError(t, err)
 	err = tf.connectSocket.Connect(tf.socketAddr)
 	require.NoError(t, err)
-	tf.connectAdapter, err = zmq4chan.NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
-	require.NoError(t, err)
+	tf.connectAdapter = zmq4chan.NewChanAdapter(tf.connectSocket, tf.rxChanSize, tf.txChanSize)
 	tf.connectAdapter.Start(context.Background())
 	defer tf.connectAdapter.Close()
+
+	// Check that channels are not nil after reconnection
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil after reconnection")
+	assert.NotNil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should not be nil after reconnection")
 
 	tf.connectAdapter.TxChan() <- sendRequestMsg
 	gotBindMsg, ok := <-tf.bindAdapter.RxChan()
@@ -231,6 +256,12 @@ func TestChanAdapterPub2Sub(t *testing.T) {
 		txChanSize: 10,
 	}
 	tf.setUp(t, zmq.SUB, zmq.PUB)
+
+	// Check that channels are not nil
+	assert.NotNil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should not be nil")
+	assert.Nil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should be nil")
+	assert.Nil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should be nil")
+	assert.NotNil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should not be nil")
 
 	// Subscribe to all messages
 	err := tf.connectSocket.SetSubscribe("")
@@ -256,6 +287,12 @@ func TestChanAdapterPush2Pull(t *testing.T) {
 	}
 	tf.setUp(t, zmq.PUSH, zmq.PULL)
 
+	// Check that channels are not nil
+	assert.Nil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.Nil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should be nil")
+
 	// Test
 	pushMsg := [][]byte{[]byte("pushed message")}
 
@@ -272,6 +309,12 @@ func TestChanAdapterPair2Pair(t *testing.T) {
 		txChanSize: 10,
 	}
 	tf.setUp(t, zmq.PAIR, zmq.PAIR)
+
+	// Check that channels are not nil
+	assert.NotNil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should not be nil")
 
 	// Test bidirectional communication
 	msg1 := [][]byte{[]byte("message from connect to bind")}
@@ -296,6 +339,12 @@ func TestChanAdapterEmptyMessage(t *testing.T) {
 	}
 	tf.setUp(t, zmq.PUSH, zmq.PULL)
 
+	// Check that channels are not nil
+	assert.Nil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.Nil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should be nil")
+
 	// Test sending an empty message
 	emptyMsg := [][]byte{{}}
 	tf.connectAdapter.TxChan() <- emptyMsg
@@ -311,6 +360,12 @@ func TestChanAdapterLargeMessage(t *testing.T) {
 		txChanSize: 10,
 	}
 	tf.setUp(t, zmq.PUSH, zmq.PULL)
+
+	// Check that channels are not nil
+	assert.Nil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.Nil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should be nil")
 
 	// Test sending a large message (1MB)
 	largeData := make([]byte, 1024*1024)
@@ -333,6 +388,12 @@ func TestChanAdapterMultipartMessages(t *testing.T) {
 	}
 	tf.setUp(t, zmq.PUSH, zmq.PULL)
 
+	// Check that channels are not nil
+	assert.Nil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.Nil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should be nil")
+
 	// Test multipart message
 	multipartMsg := [][]byte{
 		[]byte("part1"),
@@ -352,8 +413,11 @@ func TestChanAdapterCloseBeforeStart(t *testing.T) {
 	require.NoError(t, err)
 	defer socket.Close()
 
-	adapter, err := zmq4chan.NewChanAdapter(socket, 10, 10)
-	require.NoError(t, err)
+	adapter := zmq4chan.NewChanAdapter(socket, 10, 10)
+
+	// Check that channels are not nil
+	assert.NotNil(t, adapter.TxChan(), "adapter.TxChan() should not be nil")
+	assert.NotNil(t, adapter.RxChan(), "adapter.RxChan() should not be nil")
 
 	// Close before starting - should not panic
 	assert.NotPanics(t, func() {
@@ -381,6 +445,12 @@ func TestChanAdapterChannelSizes(t *testing.T) {
 			}
 			tf.setUp(t, zmq.PUSH, zmq.PULL)
 
+			// Check that channels are not nil
+			assert.Nil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should be nil")
+			assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+			assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+			assert.Nil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should be nil")
+
 			// Test basic functionality with different channel sizes
 			testMsg := [][]byte{[]byte("test message")}
 
@@ -399,6 +469,12 @@ func TestChanAdapterConcurrentAccess(t *testing.T) {
 		txChanSize: 100,
 	}
 	tf.setUp(t, zmq.DEALER, zmq.ROUTER)
+
+	// Check that channels are not nil
+	assert.NotNil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should not be nil")
 
 	const numGoroutines = 10
 	const messagesPerGoroutine = 10
@@ -454,6 +530,12 @@ func TestChanAdapterHighVolumeMessages(t *testing.T) {
 	}
 	tf.setUp(t, zmq.PUSH, zmq.PULL)
 
+	// Check that channels are not nil
+	assert.Nil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.Nil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should be nil")
+
 	const numMessages = 1000
 	done := make(chan bool)
 
@@ -497,6 +579,12 @@ func TestChanAdapterBackpressure(t *testing.T) {
 	// Use PUSH-PULL instead of REQ-REP to avoid strict alternating requirements
 	tf.setUp(t, zmq.PUSH, zmq.PULL)
 
+	// Check that channels are not nil
+	assert.Nil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.Nil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should be nil")
+
 	// Send multiple messages without reading them
 	// This should test backpressure handling
 	sent := 0
@@ -531,6 +619,12 @@ func TestChanAdapterErrorRecovery(t *testing.T) {
 	}
 	tf.setUp(t, zmq.REQ, zmq.REP)
 
+	// Check that channels are not nil
+	assert.NotNil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should not be nil")
+
 	// Send a normal message first
 	normalMsg := [][]byte{[]byte("normal")}
 	tf.connectAdapter.TxChan() <- normalMsg
@@ -554,6 +648,12 @@ func TestChanAdapterMessageOrder(t *testing.T) {
 		txChanSize: 100,
 	}
 	tf.setUp(t, zmq.PUSH, zmq.PULL)
+
+	// Check that channels are not nil
+	assert.Nil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.Nil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should be nil")
 
 	const numMessages = 20
 
@@ -582,6 +682,12 @@ func TestChanAdapterZeroByteMessage(t *testing.T) {
 		txChanSize: 10,
 	}
 	tf.setUp(t, zmq.PUSH, zmq.PULL)
+
+	// Check that channels are not nil
+	assert.Nil(t, tf.bindAdapter.TxChan(), "bindAdapter.TxChan() should be nil")
+	assert.NotNil(t, tf.bindAdapter.RxChan(), "bindAdapter.RxChan() should not be nil")
+	assert.NotNil(t, tf.connectAdapter.TxChan(), "connectAdapter.TxChan() should not be nil")
+	assert.Nil(t, tf.connectAdapter.RxChan(), "connectAdapter.RxChan() should be nil")
 
 	// Test message with zero-length byte array
 	zeroMsg := [][]byte{make([]byte, 0)}

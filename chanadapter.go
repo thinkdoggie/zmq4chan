@@ -74,10 +74,12 @@ var (
 //	case <-time.After(time.Second):
 //		// Handle timeout
 //	}
-func NewChanAdapter(socket *zmq.Socket, rxChanSize, txChanSize int) (*ChanAdapter, error) {
-	socketType, err := socket.GetType()
+func NewChanAdapter(socket *zmq.Socket, rxChanSize, txChanSize int) *ChanAdapter {
+	var socketType zmq.Type
+	var err error
+	socketType, err = socket.GetType()
 	if err != nil {
-		return nil, err
+		log.Printf("E: failed to get socket type: %v", err)
 	}
 	needRx, needTx := getSocketChannelNeeds(socketType)
 
@@ -116,9 +118,11 @@ func NewChanAdapter(socket *zmq.Socket, rxChanSize, txChanSize int) (*ChanAdapte
 		closeChan:      closeChan,
 		hasRx:          needRx,
 		hasTx:          needTx,
-	}, nil
+	}
 }
 
+// getSocketChannelNeeds determines which channels (Rx, Tx, or both) are needed
+// based on the ZMQ socket type. Returns needRx and needTx boolean flags.
 func getSocketChannelNeeds(socketType zmq.Type) (needRx bool, needTx bool) {
 	switch socketType {
 	case zmq.PUB:
@@ -128,7 +132,7 @@ func getSocketChannelNeeds(socketType zmq.Type) (needRx bool, needTx bool) {
 	case zmq.PUSH:
 		return false, true
 	case zmq.PULL:
-		return true, true
+		return true, false
 	}
 
 	return true, true
@@ -243,6 +247,9 @@ func (t *ChanAdapter) runRouterLoop(_ context.Context, pairFlag int) {
 	}
 }
 
+// handlePairEvent processes coordination messages received on the internal PAIR socket
+// from the sender loop. It handles close operations and send requests.
+// Returns true if the router loop should exit, false otherwise.
 func (t *ChanAdapter) handlePairEvent(pair *zmq.Socket, flag int) (shouldExit bool) {
 	opCode, err := pair.RecvBytes(0)
 	if err != nil {
@@ -271,6 +278,8 @@ func (t *ChanAdapter) handlePairEvent(pair *zmq.Socket, flag int) (shouldExit bo
 	return false
 }
 
+// handleSocketEvent processes incoming messages from the main ZMQ socket
+// and forwards them to the receive channel.
 func (t *ChanAdapter) handleSocketEvent(soc *zmq.Socket) {
 	// process incoming messages
 	msg, err := soc.RecvMessageBytes(0)
@@ -328,6 +337,9 @@ func (t *ChanAdapter) runSenderLoop(ctx context.Context) {
 	}
 }
 
+// runTxOnlyLoop handles outgoing messages for transmit-only socket types
+// (PUB, PUSH). It directly sends messages from the transmit channel to
+// the ZMQ socket without coordination with a router loop.
 func (t *ChanAdapter) runTxOnlyLoop(ctx context.Context) {
 	var err error
 	defer t.wg.Done()
@@ -352,6 +364,9 @@ func (t *ChanAdapter) runTxOnlyLoop(ctx context.Context) {
 	}
 }
 
+// runCloseOnlyLoop handles graceful shutdown coordination for receive-only
+// socket types (SUB, PULL). It waits for context cancellation and then
+// signals the router loop to close via the internal PAIR socket.
 func (t *ChanAdapter) runCloseOnlyLoop(ctx context.Context) {
 	var err error
 	defer t.wg.Done()
