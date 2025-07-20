@@ -2,9 +2,9 @@ name: ZMQ4 Compatibility Test
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, 'dev/*' ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, 'dev/*' ]
   schedule:
     # Run weekly on Sundays at 02:00 UTC
     - cron: '0 2 * * 0'
