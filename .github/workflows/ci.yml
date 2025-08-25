@@ -18,7 +18,7 @@ jobs:
         
     steps:
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Go
       uses: actions/setup-go@v5
@@ -96,7 +96,7 @@ jobs:
         version: ['v1', 'v2']
     steps:
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Go
       uses: actions/setup-go@v5
@@ -146,7 +146,7 @@ jobs:
         version: ['v1', 'v2']
     steps:
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Go
       uses: actions/setup-go@v5
@@ -190,7 +190,7 @@ jobs:
         version: ['v1', 'v2']
     steps:
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Go
       uses: actions/setup-go@v5
@@ -243,7 +243,7 @@ jobs:
         version: ['v1', 'v2']
     steps:
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Go
       uses: actions/setup-go@v5
